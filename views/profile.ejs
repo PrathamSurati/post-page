@@ -38,9 +38,12 @@
                 <p class="text-sm tracking-tight">
                   <%= post.content %>
                 </p>
-                <div class="btns flex gap-5 mt-5">
-                    <a href="" class="text-blue-500">Like</a>
-                    <a href="" class="text-zinc-400">Edit</a>
+                <small class="mt-2 inline-block"><%= post.likes.length %> likes</small>
+                <div class="btns flex gap-5 mt-2">
+                    <a href="/like/<%=post._id %>" class="text-blue-500">
+                       <%= post.likes.indexOf(user._id) === -1 ? "like" : "Unlike" %>
+                    </a>
+                    <a href="/edit/<%= post._id %>" class="text-zinc-400">Edit</a>
                 </div>
               </div>
          <% }) %>

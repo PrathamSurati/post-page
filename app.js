@@ -10,18 +10,78 @@ app.set("view engine", "ejs");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+const multer = require("multer");
+const crypto = require("crypto");
+const path = require("path");
+
+//multer diskStorage code.
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./public/images/uploads");
+  },
+  filename: function (req, file, cb) {
+    //for generaating the unique file name we use randombytes that generate file
+    //  into buffer after that we need tto convert that into hex a decimal 
+    // and then we can use that as a file name for extention we use path extname function
+    crypto.randomBytes(12, (err, bytes) => {
+      const fn = bytes.toString("hex") + path.extname(file.originalname);
+      cb(null, fn);
+    });
+  },
+});
+
+const upload = multer({ storage: storage });
 
 app.get("/", (req, res) => {
   res.render("index");
+});
+
+app.get("/test", (req, res) => {
+  res.render("test");
+});
+
+app.post("/upload", upload.single("image"), (req, res) => {
+  console.log('====================================');
+  console.log(req.file);
+  console.log('====================================');
 });
 
 app.get("/login", (req, res) => {
   res.render("login");
 });
 
+//isLoggedin is a middleware function
 app.get("/profile", isLoggedin, async (req, res) => {
-  let user = await userModel.findOne({ email: req.user.email }).populate("posts");   // this line  not only send te id but  that send the content of the post
+  let user = await userModel
+    .findOne({ email: req.user.email })
+    .populate("posts"); // this line  not only send te id but  that send the content of the post
   res.render("profile", { user });
+});
+
+app.get("/like/:id", isLoggedin, async (req, res) => {
+  let post = await postModel.findOne({ _id: req.params.id }).populate("user");
+
+  if (post.likes.indexOf(req.user.userid) === -1) {
+    post.likes.push(req.user.userid);
+  } else {
+    post.likes.splice(post.likes.indexOf(req.user.userid), 1);
+  }
+
+  await post.save();
+  res.redirect("/profile");
+});
+
+app.get("/edit/:id", isLoggedin, async (req, res) => {
+  let post = await postModel.findOne({ _id: req.params.id }).populate("user");
+  res.render("edit", { post });
+});
+
+app.post("/update/:id", isLoggedin, async (req, res) => {
+  let post = await postModel.findOneAndUpdate(
+    { _id: req.params.id },
+    { content: req.body.content }
+  );
+  res.redirect("/profile");
 });
 
 app.post("/post", isLoggedin, async (req, res) => {
@@ -31,7 +91,7 @@ app.post("/post", isLoggedin, async (req, res) => {
   let post = await postModel.create({
     user: user._id,
     content,
-  })
+  });
 
   user.posts.push(post._id);
   await user.save();
